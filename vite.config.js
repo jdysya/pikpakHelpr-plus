@@ -12,12 +12,12 @@ export default defineConfig({
         icon: 'https://www.google.com/s2/favicons?sz=64&domain=mypikpak.com',
         namespace: 'http://tampermonkey.net/',
         match: ['https://mypikpak.com/*'],
-        author: 'xiaoziguys',
+        author: 'jdysya',
         grant: ['unsafeWindow', 'GM_xmlhttpRequest'],
         license: 'MIT',
         runAt: 'document-start',
-        name: 'pikpak助手',
-        description: 'pikpak网盘助手，绕过ip限制，支持aria2下载!'
+        name: 'pikpak助手plus',
+        description: 'pikpak网盘助手的改良版，绕过ip限制，支持推送文件夹到aria2中!'
       },
       build: {
         externalGlobals: {
