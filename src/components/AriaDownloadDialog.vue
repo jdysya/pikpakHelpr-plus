@@ -33,6 +33,7 @@ watch(
     if (val) {
       const tempList = []
       let parent_id = window.location.href.split('/').pop()
+      if (parent_id == 'all') parent_id = ''
       getList(parent_id).then(res => {
         res.files.forEach(item => {
           tempList.push({ id: item.id, name: item.name, type: item.kind })
@@ -110,9 +111,9 @@ const push = async () => {
           { out: res.name }
         ]
       }
-      if(ariaPath){
+      if (ariaPath) {
         // 拼接路径
-        ariaData.params[1].dir = ariaPath+ (item.path || '')
+        ariaData.params[1].dir = ariaPath + (item.path || '')
       }
       if (ariaParams) {
         const customParams = ariaParams.split(';')
