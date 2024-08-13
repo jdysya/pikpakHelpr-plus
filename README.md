@@ -1,5 +1,7 @@
 ## 说明
-本项目改进于： https://github.com/xiaoziguys/pikpakHelpr，具体修改和新增了如下特性：
+本项目改进于： https://github.com/xiaoziguys/pikpakHelpr
+
+具体修改和新增了如下特性：
 1. 修复了原仓库中由于官方接口改变导致不可用的情况；
 2. 改良了获取当前目录下文件列表的实现方式，原仓库是通过js获取dom元素，本项目则是采用调用官方接口实现
 3. 支持了文件夹的下载
