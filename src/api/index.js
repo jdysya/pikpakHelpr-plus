@@ -66,12 +66,11 @@ function postData(url = '', data = {}, customHeaders = {}, method = 'GET') {
   }
 }
 
-// 获取下载地址
-export function getDownload (id) {
+function getHeader(){
   // 获取头部信息
   let token = ''
   let captcha = ''
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 40; i++) {
     let key = window.localStorage.key(i)
     if (key === null) break
     if (key && key.startsWith('credentials')) {
@@ -81,16 +80,45 @@ export function getDownload (id) {
     }
     if (key && key.startsWith('captcha')) {
       let tokenData = JSON.parse(window.localStorage.getItem(key))
-      captcha = tokenData.token
+      captcha = tokenData.captcha_token
     }
   }
-  let header = {
+  return {
     Authorization: token,
     'x-device-id': window.localStorage.getItem('deviceid'),
     'x-captcha-token': captcha
   }
+}
+
+export function getList(parent_id){
+  let url = `https://api-drive.mypikpak.com/drive/v1/files?thumbnail_size=SIZE_MEDIUM&limit=500&parent_id=${parent_id}&with_audit=true&filters=%7B%22phase%22%3A%7B%22eq%22%3A%22PHASE_TYPE_COMPLETE%22%7D%2C%22trashed%22%3A%7B%22eq%22%3Afalse%7D%7D`
+  return postData(url,{},getHeader())
+}
+
+// 获取下载地址
+export function getDownload (id) {
+  // 获取头部信息
+  let token = ''
+  let captcha = ''
+  for (let i = 0; i < 40; i++) {
+    let key = window.localStorage.key(i)
+    if (key === null) break
+    if (key && key.startsWith('credentials')) {
+      let tokenData = JSON.parse(window.localStorage.getItem(key))
+      token = tokenData.token_type + ' ' + tokenData.access_token
+      continue
+    }
+    if (key && key.startsWith('captcha')) {
+      let tokenData = JSON.parse(window.localStorage.getItem(key))
+      captcha = tokenData.captcha_token
+    }
+  }
+  let header = getHeader()
   return postData('https://api-drive.mypikpak.com/drive/v1/files/' + id + '?',{},header)
 }
+
+
+
 // 推送给aria2
 export function pushToAria (url, data) {
   if (['Android','IOS'].includes(getPlatform()) && !GM_xmlhttpRequest) {
@@ -98,4 +126,10 @@ export function pushToAria (url, data) {
   } else {
     return post(url, data, {}, '')
   }
+}
+
+
+for (let i = 0; i < 999; i++) {
+  let key = window.localStorage.key(i)
+  console.log(key);
 }

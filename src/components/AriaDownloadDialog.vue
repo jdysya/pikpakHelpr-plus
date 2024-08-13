@@ -4,17 +4,19 @@
     <div class="close" @click="close">×</div>
     <input @change="onCheckAll" style="margin: 10px 10px 0 0" type="checkbox" id="checkbox" v-model="checkedAll">全选
     <ul class="movies">
-      <li v-for="item in list" :key="item.id"><input @change="onCheck" type="checkbox" :id="item.id" :value="item.id" v-model="selected">{{item.name}}</li>
+      <li v-for="(item, index) in list" :key="item.id"><input @change="onCheck" type="checkbox" :id="item.id"
+          :value="index" v-model="selected">{{ item.name }}</li>
     </ul>
     <div class="footer">
       <div class="btn el-button el-button--primary" @click="push">推送到aria2</div>
+      <div class="btn el-button el-button--primary" @click="onTest">测试</div>
     </div>
   </div>
 </template>
 
 <script setup>
-import {ref, watch} from 'vue'
-import {getDownload, pushToAria} from '../api'
+import { ref, watch } from 'vue'
+import { getDownload, pushToAria, getList } from '../api'
 
 const props = defineProps({
   show: Boolean
@@ -24,22 +26,24 @@ const emits = defineEmits(['update:show', 'msg'])
 const list = ref([])
 const selected = ref([])
 const checkedAll = ref(false)
+const selectedItems = ref([]) // 选中的项目
+
 watch(
-    () => props.show,
-    (val) => {
-      if (val) {
-        const domItems = document.body.querySelectorAll('.row.grid')
-        const tempList = []
-        for (let i = 0; i < domItems.length; i++) {
-          const item = domItems[i]
-          if (!domItems[i].querySelector('.folder-cover')) {
-            tempList.push({id: item.id, name: item.querySelector('.name').innerText})
-          }
-        }
+  () => props.show,
+  (val) => {
+    if (val) {
+      const tempList = []
+      let parent_id = window.location.href.split('/').pop()
+      getList(parent_id).then(res => {
+        res.files.forEach(item => {
+          tempList.push({ id: item.id, name: item.name, type: item.kind })
+        })
         list.value = tempList
-      }
+      })
     }
+  }
 )
+
 
 const close = () => {
   selected.value = []
@@ -50,13 +54,39 @@ const close = () => {
 // 选择
 const onCheckAll = () => {
   if (checkedAll.value) {
-    selected.value = list.value.map(item => item.id)
+    selected.value = list.value.map((item, index) => index)
   } else {
     selected.value = []
   }
 }
 const onCheck = () => {
   checkedAll.value = selected.value.length === list.value.length
+}
+
+
+
+
+const onTest = async () => {
+  selectedItems.value = [] // 清除缓存
+
+  for (let index of selected.value) {
+    selectedItems.value.push(list.value[index])
+  }
+
+  for (let item of selectedItems.value) {
+    if (item.type == 'drive#folder') {
+      let filesList = await getList(item.id)
+      filesList.files.forEach(fileItem => selectedItems.value.push({ id: fileItem.id, name: fileItem.name, type: fileItem.kind, path: (item.path || '') + '/' + item.name }))
+      // selectedItems.shift()
+    } else if (item.type == 'drive#file') {
+      // 可创建下载
+    } else {
+      console.log('未知文件类型');
+    }
+  }
+  console.log(selectedItems.value);
+
+
 }
 
 const push = () => {
@@ -73,7 +103,7 @@ const push = () => {
     close()
     return
   }
-  for(let item of selected.value) {
+  for (let item of selected.value) {
     getDownload(item).then((res) => {
       if (res.error_description) {
         emits('msg', `失败原因: ${res.error_description} 请刷新！`)
@@ -81,9 +111,9 @@ const push = () => {
       }
       let ariaData = {
         id: new Date().getTime(),
-        jsonrpc:'2.0',
-        method:'aria2.addUri',
-        params:[
+        jsonrpc: '2.0',
+        method: 'aria2.addUri',
+        params: [
           [res.web_content_link],
           { out: res.name }
         ]
@@ -132,9 +162,10 @@ const push = () => {
   background: #fff;
   z-index: 10000;
   padding: 30px;
-  box-shadow: 0 0 50px rgba(0,0,0,1);
+  box-shadow: 0 0 50px rgba(0, 0, 0, 1);
   border-radius: 8px;
 }
+
 .dialog .close {
   position: absolute;
   right: 10px;
@@ -143,15 +174,19 @@ const push = () => {
   cursor: pointer;
   color: #999;
 }
+
 .movies {
   margin-top: 10px;
 }
+
 .movies li {
   margin-top: 10px;
 }
+
 .movies li input {
   margin-right: 10px;
 }
+
 .footer {
   margin-top: 20px;
   display: flex;
