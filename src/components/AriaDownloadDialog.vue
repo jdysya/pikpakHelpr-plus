@@ -9,7 +9,6 @@
     </ul>
     <div class="footer">
       <div class="btn el-button el-button--primary" @click="push">推送到aria2</div>
-      <div class="btn el-button el-button--primary" @click="onTest">测试</div>
     </div>
   </div>
 </template>
@@ -64,9 +63,7 @@ const onCheck = () => {
 }
 
 
-
-
-const onTest = async () => {
+const getAllList = async () => {
   selectedItems.value = [] // 清除缓存
 
   for (let index of selected.value) {
@@ -77,20 +74,15 @@ const onTest = async () => {
     if (item.type == 'drive#folder') {
       let filesList = await getList(item.id)
       filesList.files.forEach(fileItem => selectedItems.value.push({ id: fileItem.id, name: fileItem.name, type: fileItem.kind, path: (item.path || '') + '/' + item.name }))
-      // selectedItems.shift()
-    } else if (item.type == 'drive#file') {
-      // 可创建下载
-    } else {
-      console.log('未知文件类型');
     }
   }
-  console.log(selectedItems.value);
-
-
+  selectedItems.value = selectedItems.value.filter(item => item.type == 'drive#file')
 }
 
-const push = () => {
-  let total = selected.value.length
+const push = async () => {
+  emits('msg', '开始获取文件内容')
+  await getAllList()
+  let total = selectedItems.value.length
   let success = 0
   let fail = 0
   let ariaHost = window.localStorage.getItem('ariaHost') || ''
@@ -103,8 +95,8 @@ const push = () => {
     close()
     return
   }
-  for (let item of selected.value) {
-    getDownload(item).then((res) => {
+  for (let item of selectedItems.value) {
+    getDownload(item.id).then((res) => {
       if (res.error_description) {
         emits('msg', `失败原因: ${res.error_description} 请刷新！`)
         return
@@ -118,7 +110,10 @@ const push = () => {
           { out: res.name }
         ]
       }
-      ariaPath && (ariaData.params[1].dir = ariaPath)
+      if(ariaPath){
+        // 拼接路径
+        ariaData.params[1].dir = ariaPath+ (item.path || '')
+      }
       if (ariaParams) {
         const customParams = ariaParams.split(';')
         customParams.forEach(item => {
