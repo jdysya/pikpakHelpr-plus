@@ -8,7 +8,7 @@
           :value="index" v-model="selected">{{ item.name }}</li>
     </ul>
     <div class="footer">
-      <div class="btn el-button el-button--primary" @click="push">推送到aria2</div>
+      <div class="btn el-button el-button--primary" @click="pushBefore">推送到aria2</div>
     </div>
   </div>
 </template>
@@ -26,6 +26,7 @@ const list = ref([])
 const selected = ref([])
 const checkedAll = ref(false)
 const selectedItems = ref([]) // 选中的项目
+const isForbidden = ref(false) // 按钮是否禁用，防抖
 
 watch(
   () => props.show,
@@ -48,6 +49,7 @@ watch(
 const close = () => {
   selected.value = []
   checkedAll.value = false
+  isForbidden.value = false
   emits('update:show', false)
 }
 
@@ -65,6 +67,9 @@ const onCheck = () => {
 
 
 const getAllList = async () => {
+  let count = 0;
+  emits('msg', '开始获取文件内容')
+
   selectedItems.value = [] // 清除缓存
 
   for (let index of selected.value) {
@@ -74,15 +79,27 @@ const getAllList = async () => {
   for (let item of selectedItems.value) {
     if (item.type == 'drive#folder') {
       let filesList = await getList(item.id)
+      emits('msg', `已获取到${++count}个文件`)
+
       filesList.files.forEach(fileItem => selectedItems.value.push({ id: fileItem.id, name: fileItem.name, type: fileItem.kind, path: (item.path || '') + '/' + item.name }))
     }
   }
   selectedItems.value = selectedItems.value.filter(item => item.type == 'drive#file')
 }
 
+const pushBefore = async () => {
+  if (!isForbidden.value) {
+    isForbidden.value = true
+    await getAllList()
+    push()
+  } else {
+    emits('msg', '已经开始推送了')
+  }
+
+}
+
+
 const push = async () => {
-  emits('msg', '开始获取文件内容')
-  await getAllList()
   let total = selectedItems.value.length
   let success = 0
   let fail = 0
@@ -91,17 +108,23 @@ const push = async () => {
   let ariaToken = window.localStorage.getItem('ariaToken') || ''
   let ariaParams = window.localStorage.getItem('ariaParams') || ''
   let errorMSG = ''
+  let retryList = [] // 重试列表
   if (!ariaHost) {
     emits('msg', '请先配置aria2')
     close()
     return
   }
+  console.log(`共${selectedItems.value.length}个项目`);
+  let testIndex = 0
   for (let item of selectedItems.value) {
     getDownload(item.id).then((res) => {
+
       if (res.error_description) {
         emits('msg', `失败原因: ${res.error_description} 请刷新！`)
         return
       }
+      emits('msg', `第${testIndex + 1}个项目下载链接获取成功`)
+      console.log(`第${testIndex + 1}个项目下载链接获取成功`);
       let ariaData = {
         id: new Date().getTime(),
         jsonrpc: '2.0',
@@ -123,29 +146,48 @@ const push = async () => {
         })
       }
       ariaToken && (ariaData.params.unshift(`token:${ariaToken}`))
-      total--
       pushToAria(ariaHost, ariaData).then((ariares) => {
         if (ariares.result) {
           success++
         } else {
+          console.log(ariares);
+          console.log(ariaData);
           errorMSG = ariares.error.message === 'Unauthorized' ? '密钥不对' : '推送失败'
           fail++
         }
       }).catch((e) => {
+        console.log(ariares);
+        console.log(ariaData);
         errorMSG = `${e.statusText} 请检测配置`
         emits('msg', `失败原因: ${e.statusText}`)
         fail++
       }).finally(() => {
+        total--
         if (total === 0) {
           emits('msg', `成功：${success} 失败: ${fail} ${fail !== 0 ? '失败原因' + errorMSG : ''}`)
+          console.info(`成功：${success} 失败: ${fail} ${fail !== 0 ? '失败原因' + errorMSG : ''}`);
+          if (retryList.length > 0) {
+            console.log(retryList);
+            emits('msg', `即将重试${retryList.length}个项目`)
+            console.log(`即将重试${retryList.length}个项目`)
+            selectedItems.value = retryList
+            retryList = [] // 清空重试列表
+            push()
+          } else {
+            close()
+          }
         }
       })
     }).catch((e) => {
+      console.warn(`第${testIndex + 1}个项目下载链接获取失败`);
+      retryList.push(selectedItems.value[testIndex])
       fail++
       total--
     })
+      .finally(() => {
+        testIndex++
+      })
   }
-  close()
 }
 </script>
 
@@ -173,6 +215,8 @@ const push = async () => {
 
 .movies {
   margin-top: 10px;
+  height: 450px;
+  overflow: auto;
 }
 
 .movies li {
