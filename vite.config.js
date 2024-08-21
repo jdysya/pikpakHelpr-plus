@@ -17,7 +17,7 @@ export default defineConfig({
         license: 'MIT',
         runAt: 'document-start',
         name: 'pikpak助手plus',
-        description: 'pikpak网盘助手的改良版，绕过ip限制，支持推送文件夹到aria2中!'
+        description: 'pikpak网盘助手的增强版，搭配代理可实现直连下载，支持推送文件夹到aria2中!'
       },
       build: {
         externalGlobals: {
