@@ -1,5 +1,5 @@
 <template>
-  <div style="width: 600px" v-if="show" class="dialog">
+  <div style="width: 60%" v-if="show" class="dialog">
     <h2>请勾选你要下载的</h2>
     <div class="close" @click="close">×</div>
     <input @change="onCheckAll" style="margin: 10px 10px 0 0" type="checkbox" id="checkbox" v-model="checkedAll">全选
@@ -35,6 +35,7 @@ watch(
       const tempList = []
       let parent_id = window.location.href.split('/').pop()
       if (parent_id == 'all') parent_id = ''
+      emits('msg', '开始加载文件列表，请稍等')
       getList(parent_id).then(res => {
         res.files.forEach(item => {
           tempList.push({ id: item.id, name: item.name, type: item.kind })
